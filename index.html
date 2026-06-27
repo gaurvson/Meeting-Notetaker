@@ -1,19 +1,929 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI Meeting Transcriber</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-    <style>
-      *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-      body { background: #070810; }
-    </style>
-    <script type="module" crossorigin src="./assets/index-9XGgrnK4.js"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Meeting Transcriber</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #070810;
+      --card: #0d1020;
+      --card2: #111428;
+      --border: #1e2240;
+      --green: #10B981;
+      --green-dim: #059669;
+      --indigo: #6366F1;
+      --indigo-dim: #4f52cc;
+      --red: #F43F5E;
+      --yellow: #F59E0B;
+      --text: #E2E8F0;
+      --text-s: #94A3B8;
+      --text-m: #64748B;
+    }
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .wrap { max-width: 700px; margin: 0 auto; }
+
+    /* ── HEADER ── */
+    header { text-align: center; padding: 36px 0 28px; }
+    header h1 {
+      font-size: clamp(1.5rem, 5vw, 2.1rem);
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--green), var(--indigo));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 8px;
+    }
+    header p { color: var(--text-s); font-size: 0.9rem; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 14px;
+    }
+    .card-label {
+      font-size: 0.75rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .08em;
+      color: var(--text-m); margin-bottom: 14px;
+    }
+
+    /* ── FORM CONTROLS ── */
+    input[type="password"], input[type="text"], select, textarea {
+      width: 100%;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 13px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .88rem;
+      margin-bottom: 9px;
+      transition: border-color .2s;
+    }
+    input:focus, select:focus { outline: none; border-color: var(--indigo); }
+    input::placeholder, textarea::placeholder { color: var(--text-m); }
+    select option { background: #1a1d35; }
+    label.row {
+      display: flex; align-items: flex-start; gap: 10px;
+      cursor: pointer; margin-bottom: 10px;
+    }
+    label.row input[type="checkbox"] {
+      width: auto; margin: 3px 0 0; flex-shrink: 0;
+      accent-color: var(--green);
+    }
+    label.row .ltext { font-size: .88rem; line-height: 1.45; }
+    label.row .lsub { font-size: .78rem; color: var(--text-m); margin-top: 3px; }
+
+    /* ── MODE TABS ── */
+    .modes {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px; margin-bottom: 14px;
+    }
+    @media(min-width:480px){ .modes { grid-template-columns: repeat(4,1fr); } }
+    .mode-btn {
+      padding: 10px 6px; border: 1px solid var(--border);
+      border-radius: 9px; background: transparent;
+      color: var(--text-s); font-family: inherit;
+      font-size: .78rem; cursor: pointer;
+      transition: all .18s; text-align: center; line-height: 1.4;
+    }
+    .mode-btn:hover:not(.off) { border-color: var(--indigo); color: var(--text); }
+    .mode-btn.on { border-color: var(--indigo); background: rgba(99,102,241,.15); color: var(--text); }
+    .mode-btn.off { opacity: .38; cursor: not-allowed; }
+    .mode-btn .emoji { font-size: 1.25rem; display: block; margin-bottom: 3px; }
+
+    /* ── INFO BOX ── */
+    .info-box {
+      font-size: .82rem; line-height: 1.6; color: var(--text-s);
+      padding: 11px 14px; border-radius: 8px;
+      background: rgba(255,255,255,.03);
+      border-left: 3px solid var(--indigo);
+    }
+    .info-box strong { color: var(--text); }
+
+    /* ── NOTICE BANNER ── */
+    .notice {
+      padding: 11px 15px; border-radius: 9px;
+      margin-bottom: 14px; font-size: .83rem; line-height: 1.55;
+    }
+    .notice.info  { background:rgba(99,102,241,.1); border:1px solid rgba(99,102,241,.3); color:#a5b4fc; }
+    .notice.warn  { background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.3); color:#fbbf24; }
+    .notice.err   { background:rgba(244,63,94,.1);  border:1px solid rgba(244,63,94,.3);  color:#fb7185; }
+    .notice.ok    { background:rgba(16,185,129,.1); border:1px solid rgba(16,185,129,.3); color:#34d399; }
+
+    /* ── MIC SELECTOR GRID ── */
+    .mic-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+    .mic-grid .lbl { font-size: .78rem; color: var(--text-s); margin-bottom: 4px; }
+
+    /* ── UPLOAD ZONE ── */
+    .drop-zone {
+      border: 2px dashed var(--border); border-radius: 10px;
+      padding: 26px 20px; text-align: center; cursor: pointer;
+      transition: border-color .2s; margin-top: 12px;
+    }
+    .drop-zone:hover { border-color: var(--indigo); }
+    .drop-zone .dz-icon { font-size: 2rem; margin-bottom: 8px; }
+    .drop-zone p { color: var(--text-s); font-size: .83rem; }
+    .drop-zone .file-sel { color: var(--green); font-size: .83rem; margin-top: 8px; word-break: break-all; }
+
+    /* ── BUTTONS ── */
+    .btn-primary {
+      width: 100%; padding: 13px 20px;
+      background: var(--green); color: #fff;
+      border: none; border-radius: 10px;
+      font-family: inherit; font-size: .95rem; font-weight: 700;
+      cursor: pointer; transition: background .2s, transform .1s;
+    }
+    .btn-primary:hover { background: var(--green-dim); }
+    .btn-primary:active { transform: scale(.99); }
+    .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-sm {
+      padding: 7px 14px; border: 1px solid var(--border);
+      border-radius: 7px; background: rgba(255,255,255,.06);
+      color: var(--text); font-family: inherit;
+      font-size: .82rem; cursor: pointer; transition: background .2s;
+    }
+    .btn-sm:hover { background: rgba(255,255,255,.12); }
+    .btn-stop {
+      padding: 11px 28px; background: var(--red);
+      color: #fff; border: none; border-radius: 10px;
+      font-family: inherit; font-size: .95rem; font-weight: 700;
+      cursor: pointer; transition: opacity .2s;
+    }
+    .btn-stop:hover { opacity: .88; }
+
+    /* ── RECORDING STATE ── */
+    .rec-card { text-align: center; padding: 32px 20px; }
+    .rec-dot {
+      display: inline-block; width: 10px; height: 10px;
+      border-radius: 50%; background: var(--red);
+      animation: blink 1s ease-in-out infinite; margin-right: 7px;
+    }
+    @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.7)} }
+    .rec-status { font-size: 1.05rem; font-weight: 600; margin-bottom: 12px; }
+    .rec-meta {
+      display: flex; justify-content: center; gap: 28px;
+      margin: 14px 0 22px; font-size: .88rem; color: var(--text-s);
+    }
+    .rec-meta .val { color: var(--text); font-weight: 700; font-variant-numeric: tabular-nums; }
+    .size-warn { color: var(--yellow); font-size: .8rem; margin-bottom: 14px; }
+
+    /* ── PROCESSING ── */
+    .proc-card { text-align: center; padding: 44px 20px; }
+    .spinner {
+      display: inline-block; width: 38px; height: 38px;
+      border: 3px solid rgba(99,102,241,.2);
+      border-top-color: var(--indigo);
+      border-radius: 50%; animation: spin .75s linear infinite;
+      margin-bottom: 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .proc-msg { color: var(--text-s); font-size: .92rem; }
+    .proc-sub { color: var(--text-m); font-size: .78rem; margin-top: 6px; }
+
+    /* ── TRANSCRIPT ── */
+    .tx-header {
+      display: flex; align-items: center;
+      justify-content: space-between; flex-wrap: wrap; gap: 10px;
+      margin-bottom: 12px;
+    }
+    .tx-header h2 { font-size: .95rem; font-weight: 700; }
+    .tx-actions { display: flex; gap: 8px; }
+    .wc { font-size: .78rem; color: var(--text-m); margin-bottom: 14px; }
+    .tx-body {
+      font-size: .92rem; line-height: 1.85;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    .sp-a { font-weight: 700; color: var(--indigo); }
+    .sp-b { font-weight: 700; color: var(--green); }
+    .sp-c { font-weight: 700; color: var(--yellow); }
+    .sp-d { font-weight: 700; color: #f472b6; }
+    .section-head { font-weight: 800; font-size: .9rem; color: var(--text-s); letter-spacing:.06em; }
+
+    /* ── FOOTER ── */
+    footer { text-align: center; padding: 22px 0; color: var(--text-m); font-size: .75rem; }
+    footer a { color: var(--text-m); }
+
+    [hidden] { display: none !important; }
+    section { animation: fadeUp .28s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:none} }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>AI Meeting Transcriber</h1>
+    <p>Online meetings · Physical meetings · iPad · Edge · Speaker identification</p>
+  </header>
+
+  <div id="banner"></div>
+
+  <!-- ═══ SETUP ═══ -->
+  <section id="s-setup">
+
+    <!-- API Config -->
+    <div class="card">
+      <div class="card-label">API Configuration</div>
+      <select id="provider">
+        <option value="groq">Groq — whisper-large-v3 &nbsp;(Free, recommended)</option>
+        <option value="openai">OpenAI — whisper-1 &nbsp;(Paid, $0.006/min)</option>
+      </select>
+      <input type="password" id="apiKey" placeholder="Paste your Groq or OpenAI API key" />
+      <input type="password" id="claudeKey" placeholder="(Optional) Anthropic Claude API key — for speaker diarization" />
+      <p style="font-size:.75rem;color:var(--text-m)">
+        Free Groq key → <strong>console.groq.com</strong> &nbsp;·&nbsp;
+        Claude key → <strong>console.anthropic.com</strong>
+      </p>
+    </div>
+
+    <!-- Recording Mode -->
+    <div class="card">
+      <div class="card-label">Recording Mode</div>
+      <div class="modes">
+        <button class="mode-btn on" data-mode="mic">
+          <span class="emoji">🎤</span>Microphone
+        </button>
+        <button class="mode-btn" data-mode="screen" id="btn-screen">
+          <span class="emoji">💻</span>Screen / Tab
+        </button>
+        <button class="mode-btn" data-mode="physical">
+          <span class="emoji">👥</span>Physical Meeting
+        </button>
+        <button class="mode-btn" data-mode="upload">
+          <span class="emoji">📁</span>Upload File
+        </button>
+      </div>
+
+      <!-- Mic mode -->
+      <div id="opt-mic" class="mode-option">
+        <div class="info-box">
+          Records from your device microphone. Works on <strong>all devices</strong> —
+          iPhone, iPad, Android, desktop — across Chrome, Edge, Firefox, and Safari.
+        </div>
+      </div>
+
+      <!-- Screen mode -->
+      <div id="opt-screen" class="mode-option" hidden>
+        <div class="info-box" id="screen-info">
+          Captures audio from an online meeting tab (Teams, Meet, Zoom, etc.).<br><br>
+          <strong>Chrome:</strong> Select your meeting tab → tick <em>"Share tab audio"</em><br>
+          <strong>Edge:</strong> Select your meeting tab → tick <em>"Share audio"</em><br>
+          <strong>Firefox:</strong> Choose "Application Window" and enable audio sharing<br><br>
+          <em>Not supported on iPhone / iPad.</em>
+        </div>
+      </div>
+
+      <!-- Physical Meeting mode -->
+      <div id="opt-physical" class="mode-option" hidden>
+        <div class="info-box" style="margin-bottom:12px">
+          For in-person meetings. Choose <strong>Dual Mic</strong> to assign a separate
+          microphone to each person (best accuracy), or <strong>Single Mic</strong>
+          with AI-powered speaker identification via Claude.
+        </div>
+        <label class="row">
+          <input type="checkbox" id="dualMic">
+          <span class="ltext">
+            Dual Mic — one microphone per person
+            <div class="lsub">Requires two separate audio input devices (USB mic, headset, etc.)</div>
+          </span>
+        </label>
+        <div id="mic-grid" class="mic-grid" hidden>
+          <div>
+            <div class="lbl">👤 Person A — microphone</div>
+            <select id="micA"><option value="">Loading…</option></select>
+          </div>
+          <div>
+            <div class="lbl">👤 Person B — microphone</div>
+            <select id="micB"><option value="">Loading…</option></select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upload mode -->
+      <div id="opt-upload" class="mode-option" hidden>
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('fileInput').click()">
+          <div class="dz-icon">↑</div>
+          <p>Click or drag &amp; drop an audio / video file</p>
+          <p style="font-size:.75rem;margin-top:4px;color:var(--text-m)">mp3, mp4, m4a, wav, webm, ogg · max 25 MB</p>
+          <div id="file-name" class="file-sel"></div>
+        </div>
+        <input type="file" id="fileInput" accept="audio/*,video/*" hidden>
+      </div>
+    </div>
+
+    <!-- Speaker Identification -->
+    <div class="card" id="card-diarize">
+      <div class="card-label">Speaker Identification</div>
+      <label class="row">
+        <input type="checkbox" id="diarize">
+        <span class="ltext">
+          Identify different speakers with AI (diarization)
+          <div class="lsub">
+            Uses Claude AI to label Speaker A, Speaker B, etc. in the transcript.<br>
+            Requires your Anthropic Claude API key above.
+          </div>
+        </span>
+      </label>
+    </div>
+
+    <div id="err-box"></div>
+    <button class="btn-primary" id="startBtn">● Start Recording</button>
+  </section>
+
+  <!-- ═══ RECORDING ═══ -->
+  <section id="s-rec" hidden>
+    <div class="card rec-card">
+      <div class="rec-status"><span class="rec-dot"></span><span id="rec-label">Recording…</span></div>
+      <div class="rec-meta">
+        <div>Duration <span class="val" id="dur">00:00:00</span></div>
+        <div>Size <span class="val" id="sz">0.0 MB</span></div>
+      </div>
+      <div id="sz-warn" class="size-warn" hidden>⚠ Approaching 25 MB limit — stop soon</div>
+      <button class="btn-stop" id="stopBtn">■ Stop &amp; Transcribe</button>
+    </div>
+  </section>
+
+  <!-- ═══ PROCESSING ═══ -->
+  <section id="s-proc" hidden>
+    <div class="card proc-card">
+      <div class="spinner"></div>
+      <div class="proc-msg" id="proc-msg">Transcribing…</div>
+      <div class="proc-sub" id="proc-sub"></div>
+    </div>
+  </section>
+
+  <!-- ═══ TRANSCRIPT ═══ -->
+  <section id="s-tx" hidden>
+    <div class="card">
+      <div class="tx-header">
+        <h2>Your Transcript</h2>
+        <div class="tx-actions">
+          <button class="btn-sm" id="copyBtn">Copy text</button>
+          <button class="btn-sm" id="dlBtn">Download .txt</button>
+        </div>
+      </div>
+      <div class="wc" id="wc"></div>
+      <div class="tx-body" id="tx-body"></div>
+    </div>
+    <button class="btn-primary" id="newBtn" style="margin-top:8px">+ New Recording</button>
+  </section>
+
+  <footer>
+    AI Meeting Transcriber · Powered by OpenAI Whisper &amp; Anthropic Claude ·
+    Works on Chrome, Edge, Firefox, Safari, iOS
+  </footer>
+</div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════════════════
+//  BROWSER / DEVICE DETECTION
+// ══════════════════════════════════════════════════════════════════
+const ua  = navigator.userAgent;
+const br  = {
+  isIOS:     /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1),
+  isEdge:    /Edg\//.test(ua),
+  isChrome:  /Chrome\//.test(ua) && !/Edg\//.test(ua),
+  isFF:      /Firefox\//.test(ua),
+  isSafari:  /Safari\//.test(ua) && !/Chrome\//.test(ua),
+  hasDisplay: !!navigator.mediaDevices?.getDisplayMedia,
+  hasUser:    !!navigator.mediaDevices?.getUserMedia,
+  isHTTPS:    location.protocol === 'https:' || location.hostname === 'localhost',
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════════════
+const st = {
+  mode: 'mic',          // mic | screen | physical | upload
+  dualMic: false,
+  diarize: false,
+  provider: 'groq',
+  stream1: null, stream2: null,
+  rec1: null,    rec2: null,
+  ch1: [], ch2: [],
+  mime: '',
+  startMs: 0, bytes: 0, timer: null,
+  file: null,
+  transcript: '',
+};
+
+// ══════════════════════════════════════════════════════════════════
+//  DOM HELPERS
+// ══════════════════════════════════════════════════════════════════
+const $  = id => document.getElementById(id);
+const s$ = sel => document.querySelector(sel);
+const show = el => { el.hidden = false; };
+const hide = el => { el.hidden = true;  };
+
+function showSection(id) {
+  ['s-setup','s-rec','s-proc','s-tx'].forEach(x => hide($(x)));
+  show($(id));
+}
+
+function setErr(msg) {
+  const b = $('err-box');
+  b.innerHTML = msg ? `<div class="notice err" style="margin-top:10px">${esc(msg)}</div>` : '';
+}
+
+function setBanner(msg, type='info') {
+  $('banner').innerHTML = msg ? `<div class="notice ${type}">${msg}</div>` : '';
+}
+
+function setProc(msg, sub='') {
+  $('proc-msg').textContent = msg;
+  $('proc-sub').textContent = sub;
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function fmtTime(s) {
+  const h=Math.floor(s/3600), m=Math.floor((s%3600)/60), ss=s%60;
+  return [h,m,ss].map(v=>String(v).padStart(2,'0')).join(':');
+}
+function fmtSize(b) { return (b/1048576).toFixed(1)+' MB'; }
+
+// ══════════════════════════════════════════════════════════════════
+//  BROWSER NOTICES
+// ══════════════════════════════════════════════════════════════════
+function initBanner() {
+  if (!br.isHTTPS) {
+    setBanner('⚠️ Microphone access requires HTTPS or localhost. Some features may not work.','warn');
+  } else if (br.isIOS) {
+    setBanner('📱 <strong>iPad / iPhone detected.</strong> Screen capture is not supported on iOS — use <strong>Microphone</strong> mode. All other features (mic recording, upload, AI diarization) work normally.','info');
+  } else if (br.isEdge) {
+    setBanner('🌐 <strong>Microsoft Edge detected.</strong> Screen/tab capture works great! When sharing, select your meeting tab and tick <strong>"Share audio"</strong>.','info');
+  } else if (br.isFF) {
+    setBanner('🦊 <strong>Firefox:</strong> For screen capture, select "Application Window" and enable audio. Tab audio sharing may require OS-level audio routing.','info');
+  }
+}
+
+// Disable screen button on iOS or browsers without getDisplayMedia
+function maybeDisableScreen() {
+  if (br.isIOS || !br.hasDisplay) {
+    $('btn-screen').classList.add('off');
+    $('btn-screen').title = 'Screen capture not supported on this device';
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  AUDIO DEVICES
+// ══════════════════════════════════════════════════════════════════
+async function loadMics() {
+  try {
+    // Request permission so device labels are populated
+    const tmp = await navigator.mediaDevices.getUserMedia({ audio: true });
+    tmp.getTracks().forEach(t => t.stop());
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const mics = devices.filter(d => d.kind === 'audioinput');
+    [$('micA'), $('micB')].forEach(sel => {
+      sel.innerHTML = '';
+      mics.forEach((m, i) => sel.add(new Option(m.label || `Microphone ${i+1}`, m.deviceId)));
+    });
+    if (mics.length > 1) $('micB').selectedIndex = 1;
+  } catch(e) { console.warn('loadMics:', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  AUDIO FORMAT DETECTION
+// ══════════════════════════════════════════════════════════════════
+function getMime() {
+  const types = [
+    'audio/webm;codecs=opus','audio/webm',
+    'audio/mp4;codecs=mp4a.40.2','audio/mp4',
+    'audio/ogg;codecs=opus','audio/ogg',
+  ];
+  return types.find(t => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || '';
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RECORDING ENGINE
+// ══════════════════════════════════════════════════════════════════
+function mkRecorder(stream, chunks) {
+  const mime = getMime();
+  const r = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+  r.ondataavailable = e => {
+    if (e.data.size > 0) { chunks.push(e.data); st.bytes += e.data.size; tickUI(); }
+  };
+  return r;
+}
+
+function tickUI() {
+  const secs = Math.floor((Date.now() - st.startMs) / 1000);
+  $('dur').textContent = fmtTime(secs);
+  $('sz').textContent  = fmtSize(st.bytes);
+  $('sz-warn').hidden  = st.bytes <= 22 * 1048576;
+}
+
+async function startRec() {
+  st.bytes = 0; st.startMs = Date.now();
+  st.ch1 = []; st.ch2 = [];
+  st.mime = getMime() || 'audio/webm';
+
+  if (st.mode === 'mic') {
+    st.stream1 = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: false,
+    });
+    st.rec1 = mkRecorder(st.stream1, st.ch1);
+    st.rec1.start(800);
+
+  } else if (st.mode === 'screen') {
+    const ds = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 1 }, audio: true });
+    if (!ds.getAudioTracks().length) {
+      ds.getTracks().forEach(t => t.stop());
+      const hint = br.isEdge
+        ? 'No audio captured. In Edge\'s sharing dialog, select your meeting tab and tick "Share audio".'
+        : br.isFF
+          ? 'No audio captured. In Firefox, try "Application Window" sharing and enable system audio.'
+          : 'No audio captured. Select your meeting tab and tick "Share tab audio" in the sharing dialog.';
+      throw new Error(hint);
+    }
+    st.stream1 = ds;
+    const audio = new MediaStream(ds.getAudioTracks());
+    st.rec1 = mkRecorder(audio, st.ch1);
+    st.rec1.start(800);
+    // Auto-stop when user ends screen share
+    ds.getVideoTracks().forEach(t => { t.onended = stopRec; });
+
+  } else if (st.mode === 'physical') {
+    if (st.dualMic) {
+      const dA = $('micA').value, dB = $('micB').value;
+      if (!dA || !dB) throw new Error('Select microphones for Person A and Person B.');
+      if (dA === dB) throw new Error('Please select different microphones for Person A and Person B.');
+      const sA = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: dA }, noiseSuppression: true } });
+      const sB = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: dB }, noiseSuppression: true } });
+      st.stream1 = sA; st.stream2 = sB;
+      st.rec1 = mkRecorder(sA, st.ch1);
+      st.rec2 = mkRecorder(sB, st.ch2);
+      st.rec1.start(800); st.rec2.start(800);
+      $('rec-label').textContent = 'Recording — Person A + Person B…';
+    } else {
+      // Single mic physical meeting
+      st.stream1 = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
+      st.rec1 = mkRecorder(st.stream1, st.ch1);
+      st.rec1.start(800);
+    }
+  }
+
+  showSection('s-rec');
+  st.timer = setInterval(tickUI, 1000);
+}
+
+function stopStream(s) { if (s) s.getTracks().forEach(t => t.stop()); }
+
+function waitStop(r) {
+  if (!r || r.state === 'inactive') return Promise.resolve();
+  return new Promise(res => { r.onstop = res; r.stop(); });
+}
+
+async function stopRec() {
+  clearInterval(st.timer);
+  await Promise.all([waitStop(st.rec1), waitStop(st.rec2)]);
+  stopStream(st.stream1); stopStream(st.stream2);
+  await new Promise(r => setTimeout(r, 350));
+  startTranscription();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TRANSCRIPTION
+// ══════════════════════════════════════════════════════════════════
+async function startTranscription() {
+  showSection('s-proc');
+  try {
+    const apiKey = $('apiKey').value.trim();
+    let text = '';
+
+    if (st.mode === 'upload' && st.file) {
+      setProc('Transcribing uploaded file…', 'Sending to Whisper API…');
+      text = await whisper(st.file, apiKey);
+
+    } else if (st.dualMic && st.ch2.length) {
+      // Dual mic: two separate transcriptions → combine with labels
+      setProc('Transcribing Person A…', 'Step 1 of 2');
+      const bA = new Blob(st.ch1, { type: st.mime });
+      const tA = await whisper(bA, apiKey);
+
+      setProc('Transcribing Person B…', 'Step 2 of 2');
+      const bB = new Blob(st.ch2, { type: st.mime });
+      const tB = await whisper(bB, apiKey);
+
+      // Ask Claude to weave into dialogue if key provided
+      const cKey = $('claudeKey').value.trim();
+      if (cKey) {
+        setProc('Generating dialogue with Claude AI…', 'Combining both speakers…');
+        text = await claudeWeave(tA, tB, cKey);
+      } else {
+        text = `=== PERSON A ===\n\n${tA}\n\n=== PERSON B ===\n\n${tB}`;
+      }
+
+    } else {
+      // Single stream
+      const blob = new Blob(st.ch1, { type: st.mime });
+      if (blob.size > 25 * 1048576) throw new Error('Recording exceeds 25 MB. Please record in shorter segments.');
+      setProc('Transcribing audio…', `Using ${st.provider === 'groq' ? 'Groq whisper-large-v3' : 'OpenAI whisper-1'}…`);
+      text = await whisper(blob, apiKey);
+
+      // Claude diarization
+      if (st.diarize) {
+        const cKey = $('claudeKey').value.trim();
+        if (!cKey) {
+          text += '\n\n[Speaker diarization requires a Claude API key — add it above and re-record.]';
+        } else {
+          setProc('Identifying speakers with Claude AI…', 'Analyzing conversation patterns…');
+          text = await claudeDiarize(text, cKey);
+        }
+      }
+    }
+
+    showTranscript(text);
+  } catch(e) {
+    showSection('s-setup');
+    setErr(e.message || 'Transcription failed. Please try again.');
+  }
+}
+
+async function whisper(blob, apiKey) {
+  const endpoint = st.provider === 'openai'
+    ? 'https://api.openai.com/v1/audio/transcriptions'
+    : 'https://api.groq.com/openai/v1/audio/transcriptions';
+  const model = st.provider === 'openai' ? 'whisper-1' : 'whisper-large-v3';
+
+  const ext = blob.type.includes('mp4') ? 'mp4'
+    : blob.type.includes('ogg') ? 'ogg' : 'webm';
+
+  const fd = new FormData();
+  fd.append('file', blob, `audio.${ext}`);
+  fd.append('model', model);
+  fd.append('response_format', 'json');
+  fd.append('prompt', 'This is a meeting transcript. Include all spoken words accurately. Handle Indian English and mixed-language conversations well.');
+
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${apiKey}` },
+    body: fd,
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d?.error?.message || `API error ${res.status}`);
+  }
+  const d = await res.json();
+  return (d.text || '').trim() || 'No speech detected.';
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  CLAUDE DIARIZATION
+// ══════════════════════════════════════════════════════════════════
+async function claudeCall(systemPrompt, userMsg, apiKey) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 4096,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMsg }],
+    }),
+  });
+  if (!res.ok) {
+    const d = await res.json().catch(() => ({}));
+    throw new Error(d?.error?.message || `Claude API error ${res.status}`);
+  }
+  const d = await res.json();
+  return d.content?.[0]?.text?.trim() || '';
+}
+
+async function claudeDiarize(transcript, apiKey) {
+  const system = `You are a meeting transcript specialist. Analyze the transcript and identify different speakers.
+
+Rules:
+1. Label each speaker turn with "Speaker A:", "Speaker B:", "Speaker C:", etc. on its own line.
+2. If you can infer roles from context (Interviewer, Host, Presenter, Client, etc.), use those labels instead.
+3. Preserve the EXACT original words — do not paraphrase, summarize, or omit anything.
+4. Start a new line at every speaker change.
+5. Detect speaker changes from: question/answer patterns, topic shifts, different perspectives, names mentioned, speaking styles.
+6. If the whole transcript is one person, label as "Speaker A:" and note "(single speaker)" at the end.
+
+Output format:
+Speaker A: [their words]
+
+Speaker B: [their words]
+
+Speaker A: [their words]`;
+
+  try {
+    const result = await claudeCall(system,
+      `Please identify and label each speaker in this transcript:\n\n${transcript}`,
+      apiKey);
+    return result || transcript;
+  } catch(e) {
+    return transcript + `\n\n[Claude diarization failed: ${e.message}]`;
+  }
+}
+
+async function claudeWeave(textA, textB, apiKey) {
+  const system = `You are a meeting transcript specialist. You have two separate transcripts from a dual-microphone physical meeting recording — one transcript per speaker. Weave them into a realistic, natural conversation dialogue.
+
+Rules:
+1. Label Person A's speech as "Person A:" and Person B's speech as "Person B:".
+2. Alternate speakers naturally — use conversational logic (questions imply responses, topics flow).
+3. Keep ALL original words exactly — do not paraphrase or omit anything.
+4. Put each speaker turn on its own line.
+5. If segments are too long to interleave sensibly, present them in the most natural conversation order.`;
+
+  try {
+    const result = await claudeCall(system,
+      `Person A's transcript:\n${textA}\n\nPerson B's transcript:\n${textB}\n\nPlease combine these into a natural conversation dialogue.`,
+      apiKey);
+    return result || `=== PERSON A ===\n\n${textA}\n\n=== PERSON B ===\n\n${textB}`;
+  } catch(e) {
+    return `=== PERSON A ===\n\n${textA}\n\n=== PERSON B ===\n\n${textB}\n\n[Claude weaving failed: ${e.message}]`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  TRANSCRIPT DISPLAY
+// ══════════════════════════════════════════════════════════════════
+function showTranscript(text) {
+  st.transcript = text;
+  const wc = text.split(/\s+/).filter(Boolean).length;
+  $('wc').textContent = `${wc.toLocaleString()} words`;
+  $('tx-body').innerHTML = renderTx(text);
+  showSection('s-tx');
+}
+
+const SP_CLASSES = ['sp-a','sp-b','sp-c','sp-d'];
+function renderTx(raw) {
+  const spMap = {};
+  let si = 0;
+  return esc(raw)
+    // Highlight speaker labels
+    .replace(/((?:Speaker|Person|Interviewer|Presenter|Host|Guest|Client|Analyst|Manager|Engineer|Developer|SPEAKER)\s*[A-Za-z0-9]*\s*:)/g, m => {
+      const k = m.toLowerCase().trim();
+      if (!(k in spMap)) spMap[k] = SP_CLASSES[si++ % SP_CLASSES.length];
+      return `<span class="${spMap[k]}">${m}</span>`;
+    })
+    // Section headers
+    .replace(/=== ([^=\n]+) ===/g, '<span class="section-head">── $1 ──</span>');
+}
+
+function copyTx() {
+  navigator.clipboard.writeText(st.transcript).then(() => {
+    const b = $('copyBtn');
+    b.textContent = '✓ Copied!';
+    setTimeout(() => b.textContent = 'Copy text', 2200);
+  });
+}
+function dlTx() {
+  const ts = new Date().toISOString().slice(0,16).replace('T','-');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([st.transcript], { type: 'text/plain' }));
+  a.download = `transcript-${ts}.txt`; a.click();
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  RESET
+// ══════════════════════════════════════════════════════════════════
+function reset() {
+  Object.assign(st, {
+    stream1:null, stream2:null, rec1:null, rec2:null,
+    ch1:[], ch2:[], bytes:0, transcript:'', file:null,
+  });
+  $('rec-label').textContent = 'Recording…';
+  $('sz-warn').hidden = true;
+  $('file-name').textContent = '';
+  $('fileInput').value = '';
+  setErr('');
+  showSection('s-setup');
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  EVENT WIRING
+// ══════════════════════════════════════════════════════════════════
+function wire() {
+  // Mode tabs
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.classList.contains('off')) return;
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('on'));
+      btn.classList.add('on');
+      document.querySelectorAll('.mode-option').forEach(el => el.hidden = true);
+      st.mode = btn.dataset.mode;
+      $(`opt-${st.mode}`).hidden = false;
+      $('startBtn').textContent = st.mode === 'upload' ? '⬆ Transcribe File' : '● Start Recording';
+      $('card-diarize').hidden = st.mode === 'upload';
+    });
+  });
+
+  // Provider
+  $('provider').addEventListener('change', e => { st.provider = e.target.value; });
+
+  // Dual mic
+  $('dualMic').addEventListener('change', e => {
+    st.dualMic = e.target.checked;
+    $('mic-grid').hidden = !st.dualMic;
+    if (st.dualMic) loadMics();
+  });
+
+  // Diarize
+  $('diarize').addEventListener('change', e => { st.diarize = e.target.checked; });
+
+  // File input
+  $('fileInput').addEventListener('change', e => {
+    const f = e.target.files?.[0];
+    if (f) { st.file = f; $('file-name').textContent = `📎 ${f.name}`; }
+  });
+
+  // Drag & drop
+  const dz = $('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor='var(--indigo)'; });
+  dz.addEventListener('dragleave', () => { dz.style.borderColor=''; });
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.style.borderColor='';
+    const f = e.dataTransfer.files?.[0];
+    if (f) { st.file = f; $('file-name').textContent = `📎 ${f.name}`; }
+  });
+
+  // Start
+  $('startBtn').addEventListener('click', async () => {
+    const key = $('apiKey').value.trim();
+    if (!key) { setErr('Please enter your API key first.'); return; }
+    setErr('');
+
+    if (st.mode === 'upload') {
+      if (!st.file) { setErr('Please select an audio or video file first.'); return; }
+      startTranscription(); return;
+    }
+
+    if (!br.isHTTPS) {
+      setErr('Recording requires HTTPS. Please open this page via https:// or localhost.');
+      return;
+    }
+
+    try { await startRec(); }
+    catch(e) {
+      if (e.name === 'NotAllowedError')
+        setErr('Permission denied. Please allow microphone/screen access and try again.');
+      else if (e.name === 'NotFoundError')
+        setErr('No microphone found. Please connect a microphone and try again.');
+      else setErr(e.message || 'Could not start recording.');
+    }
+  });
+
+  $('stopBtn').addEventListener('click', stopRec);
+  $('copyBtn').addEventListener('click', copyTx);
+  $('dlBtn').addEventListener('click', dlTx);
+  $('newBtn').addEventListener('click', reset);
+
+  // Persist keys in sessionStorage
+  $('apiKey').addEventListener('input', e => sessionStorage.setItem('api_key', e.target.value));
+  $('claudeKey').addEventListener('input', e => sessionStorage.setItem('claude_key', e.target.value));
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  initBanner();
+  maybeDisableScreen();
+  wire();
+
+  // Restore saved keys
+  const saved = sessionStorage.getItem('api_key');
+  const savedC = sessionStorage.getItem('claude_key');
+  if (saved)  $('apiKey').value   = saved;
+  if (savedC) $('claudeKey').value = savedC;
+
+  // Init mode options visibility
+  document.querySelectorAll('.mode-option').forEach(el => el.hidden = true);
+  $('opt-mic').hidden = false;
+});
+</script>
+</body>
 </html>
